@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>extractly - PDF text extraction for RAG/AI</title>
+  <meta name="description" content="Zero-dependency PDF text extraction built for RAG and AI pipelines. 6x faster, 50x smaller than alternatives." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #fafbfc;
+      --surface: #ffffff;
+      --border: #e2e5e9;
+      --text: #1a1d21;
+      --text-secondary: #5f6b7a;
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+      --accent-light: #eef2ff;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,0.1);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, monospace;
+      --max-w: 960px;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: var(--max-w); margin: 0 auto;
+      padding: 12px 24px;
+      display: flex; align-items: center; gap: 24px;
+    }
+    .nav-logo { font-weight: 700; font-size: 18px; color: var(--accent); letter-spacing: -0.3px; text-decoration: none; }
+    .nav-logo:hover { text-decoration: none; }
+    .nav-links { display: flex; gap: 20px; margin-left: auto; font-size: 14px; font-weight: 500; }
+    .nav-links a { color: var(--text-secondary); }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* HERO */
+    .hero {
+      max-width: var(--max-w); margin: 0 auto;
+      padding: 80px 24px 60px;
+      text-align: center;
+    }
+    .hero h1 { font-size: 44px; font-weight: 800; letter-spacing: -1px; line-height: 1.1; }
+    .hero h1 span { color: var(--accent); }
+    .hero .subtitle {
+      margin-top: 16px; font-size: 19px; color: var(--text-secondary);
+      max-width: 600px; margin-left: auto; margin-right: auto;
+    }
+    .hero-stats {
+      display: flex; gap: 40px; justify-content: center; margin-top: 36px; flex-wrap: wrap;
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat .number { font-size: 32px; font-weight: 800; color: var(--accent); }
+    .hero-stat .label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+    .hero-actions { margin-top: 36px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px; border-radius: 8px;
+      font-size: 15px; font-weight: 600; border: none; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); text-decoration: none; }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: #c5c9d0; text-decoration: none; }
+    .install-cmd {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 10px 16px 10px 20px; border-radius: 8px;
+      background: #1e1e2e; color: #cdd6f4; cursor: pointer;
+      font-family: var(--mono); font-size: 14px; font-weight: 500;
+      border: 1px solid transparent; transition: all 0.15s;
+      user-select: none;
+    }
+    .install-cmd:hover { background: #262637; }
+    .install-cmd code { font-family: inherit; }
+    .install-cmd .prompt { color: #6c7086; margin-right: 2px; }
+    .install-copy {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: none; border: none; color: #6c7086; cursor: pointer;
+      padding: 2px; border-radius: 4px; transition: color 0.15s;
+    }
+    .install-copy:hover { color: #cdd6f4; }
+    .install-copy svg { width: 16px; height: 16px; }
+
+    /* SECTIONS */
+    section { max-width: var(--max-w); margin: 0 auto; padding: 0 24px 64px; }
+    section h2 { font-size: 28px; font-weight: 700; margin-bottom: 24px; letter-spacing: -0.5px; }
+
+    /* BENCHMARK TABLE */
+    .bench-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .bench-table th, .bench-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    .bench-table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); font-weight: 600; }
+    .bench-table td:nth-child(n+2) { text-align: right; font-variant-numeric: tabular-nums; }
+    .bench-table th:nth-child(n+2) { text-align: right; }
+    .bench-table tr:first-child td { font-weight: 600; color: var(--accent); }
+    .bench-note { font-size: 13px; color: var(--text-secondary); margin-top: 12px; }
+
+    /* CODE */
+    pre {
+      background: #1e1e2e; color: #cdd6f4; padding: 20px 24px;
+      border-radius: var(--radius); overflow-x: auto; font-size: 13.5px;
+      line-height: 1.65; font-family: var(--mono);
+    }
+    pre .kw { color: #cba6f7; }
+    pre .fn { color: #89b4fa; }
+    pre .str { color: #a6e3a1; }
+    pre .cmt { color: #6c7086; font-style: italic; }
+    .code-block { margin-bottom: 24px; }
+    .code-block h3 { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+
+    /* API REFERENCE */
+    .api-group { margin-bottom: 32px; }
+    .api-group h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--accent); }
+    .api-item { margin-bottom: 16px; padding: 16px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .api-sig { font-family: var(--mono); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .api-desc { font-size: 14px; color: var(--text-secondary); }
+
+    /* FEATURES */
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .feature-card {
+      padding: 20px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .feature-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .feature-card p { font-size: 13.5px; color: var(--text-secondary); }
+
+    /* PLAYGROUND */
+    .playground-wrap {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+    .pg-header {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--bg);
+    }
+    .pg-header .file-input-wrapper { position: relative; }
+    .pg-header .file-input-wrapper input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .pg-file-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; background: var(--accent); color: #fff; border: none;
+      border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;
+    }
+    .pg-file-btn:hover { background: var(--accent-hover); }
+    .pg-file-name { font-size: 13px; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pg-toggle { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .pg-toggle-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); user-select: none; }
+    .pg-toggle-label.active { color: var(--text); }
+    .pg-toggle-switch { position: relative; width: 36px; height: 20px; }
+    .pg-toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .pg-toggle-track {
+      position: absolute; inset: 0; background: #d1d5db;
+      border-radius: 10px; cursor: pointer; transition: background 0.2s;
+    }
+    .pg-toggle-track::after {
+      content: ""; position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px; background: #fff; border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2); transition: transform 0.2s;
+    }
+    .pg-toggle-switch input:checked + .pg-toggle-track { background: var(--accent); }
+    .pg-toggle-switch input:checked + .pg-toggle-track::after { transform: translateX(16px); }
+    .pg-body { display: grid; grid-template-columns: 220px 1fr; min-height: 400px; }
+    .pg-sidebar {
+      padding: 16px; border-right: 1px solid var(--border);
+      font-size: 13px; overflow-y: auto; max-height: 500px;
+    }
+    .pg-sidebar h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 600; }
+    .pg-meta-key { font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-secondary); font-weight: 600; }
+    .pg-meta-value { font-size: 13px; margin-bottom: 10px; word-break: break-word; }
+    .pg-meta-value.empty { color: #c4c9d0; font-style: italic; }
+    .pg-content {
+      padding: 20px; overflow-y: auto; max-height: 500px;
+      display: flex; flex-direction: column;
+    }
+    .pg-empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px;
+      color: var(--text-secondary); font-size: 14px;
+    }
+    .pg-empty-state svg { width: 40px; height: 40px; opacity: 0.3; }
+    .pg-loading { display: none; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 13px; padding: 20px; }
+    .pg-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pg-error { display: none; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 10px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+    .pg-pager {
+      display: none; align-items: center; gap: 4px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .pg-pager-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 28px; height: 28px; padding: 0 8px;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: var(--surface); color: var(--text); font-size: 12px; font-weight: 500;
+      cursor: pointer; user-select: none;
+    }
+    .pg-pager-btn:hover:not(:disabled):not(.active) { background: var(--bg); }
+    .pg-pager-btn:disabled { opacity: 0.3; cursor: default; }
+    .pg-pager-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .pg-pager-btn svg { width: 12px; height: 12px; }
+    .pg-pager-info { font-size: 11px; color: var(--text-secondary); margin-left: 6px; }
+    .pg-text-out {
+      display: none; white-space: pre-wrap; word-break: break-word;
+      font-family: var(--mono); font-size: 12.5px; line-height: 1.65;
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 16px; flex: 1; overflow-y: auto;
+    }
+    .pg-md-out {
+      display: none; line-height: 1.65; font-size: 14px; flex: 1; overflow-y: auto;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px 20px;
+    }
+    .pg-md-out h1 { font-size: 1.6em; margin: 0.5em 0 0.3em; }
+    .pg-md-out h2 { font-size: 1.3em; margin: 0.4em 0 0.3em; border-bottom: 1px solid var(--border); padding-bottom: 0.2em; }
+    .pg-md-out h3 { font-size: 1.1em; margin: 0.4em 0 0.2em; }
+    .pg-md-out p { margin: 0 0 0.8em; }
+    .pg-md-out ul, .pg-md-out ol { padding-left: 1.6em; margin-bottom: 0.8em; }
+    .pg-md-out table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+    .pg-md-out th, .pg-md-out td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; font-size: 13px; }
+    .pg-md-out th { background: var(--surface); font-weight: 600; }
+    .pg-md-out code { background: #e8ecf1; padding: 1px 4px; border-radius: 3px; font-family: var(--mono); font-size: 0.85em; }
+    .pg-md-out pre { background: #e8ecf1; padding: 12px; border-radius: 6px; overflow-x: auto; margin-bottom: 0.8em; }
+    .pg-md-out pre code { background: none; padding: 0; }
+    .pg-md-out blockquote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--text-secondary); margin: 0 0 0.8em; }
+    .pg-md-out hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
+
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 32px; }
+      .hero-stats { gap: 24px; }
+      .pg-body { grid-template-columns: 1fr; }
+      .pg-sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: none; }
+    }
+
+    /* FOOTER */
+    footer {
+      text-align: center; padding: 40px 24px; font-size: 13px;
+      color: var(--text-secondary); border-top: 1px solid var(--border); margin-top: 32px;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">extractly</a>
+    <div class="nav-links">
+      <a href="#benchmarks">Benchmarks</a>
+      <a href="#api">API</a>
+      <a href="#playground">Playground</a>
+      <a href="https://github.com/barryking/extractly">GitHub</a>
+      <a href="https://www.npmjs.com/package/extractly">npm</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>PDF text extraction,<br /><span>built for AI</span></h1>
+  <p class="subtitle">
+    Zero-dependency TypeScript PDF parser designed from scratch for RAG pipelines.
+    Fast, tiny, runs everywhere.
+  </p>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="number">6x</div>
+      <div class="label">Faster extraction</div>
+    </div>
+    <div class="hero-stat">
+      <div class="number">~24 KB</div>
+      <div class="label">Gzipped bundle</div>
+    </div>
+    <div class="hero-stat">
+      <div class="number">0</div>
+      <div class="label">Dependencies</div>
+    </div>
+  </div>
+  <div class="hero-actions">
+    <a href="#playground" class="btn btn-primary">Try the Playground</a>
+    <div class="install-cmd" id="installCmd">
+      <code><span class="prompt">$</span> npm install extractly</code>
+      <button type="button" aria-label="Copy to clipboard" class="install-copy" id="installCopy">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- BENCHMARKS -->
+<section id="benchmarks">
+  <h2>Performance</h2>
+  <table class="bench-table">
+    <thead>
+      <tr><th>Library</th><th>Small PDF (31 KB)</th><th>Large PDF (1.3 MB)</th><th>Bundle (gzip)</th><th>Deps</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>extractly</td><td>3 ms</td><td>40 ms</td><td>~24 KB</td><td>0</td></tr>
+      <tr><td>pdfjs-dist</td><td>5 ms</td><td>244 ms</td><td>~1.3 MB</td><td>0 (large)</td></tr>
+      <tr><td>pdf-parse</td><td>5 ms</td><td>279 ms</td><td>~780 KB</td><td>1</td></tr>
+      <tr><td>unpdf</td><td>6 ms</td><td>232 ms</td><td>~320 KB</td><td>2</td></tr>
+    </tbody>
+  </table>
+  <p class="bench-note">Median of 3 runs, Node.js, Apple Silicon.</p>
+</section>
+
+<!-- QUICK START -->
+<section id="quickstart">
+  <h2>Quick Start</h2>
+  <div class="code-block">
+    <h3>Install</h3>
+    <pre>npm install extractly</pre>
+  </div>
+  <div class="code-block">
+    <h3>Plain text</h3>
+    <pre><span class="kw">import</span> { <span class="fn">Extractly</span> } <span class="kw">from</span> <span class="str">'extractly'</span>;
+
+<span class="kw">const</span> doc = <span class="kw">await</span> <span class="fn">Extractly</span>.<span class="fn">load</span>(<span class="str">'document.pdf'</span>);
+console.<span class="fn">log</span>(doc.text);</pre>
+  </div>
+  <div class="code-block">
+    <h3>Structured Markdown</h3>
+    <pre><span class="kw">import</span> { <span class="fn">Extractly</span> } <span class="kw">from</span> <span class="str">'extractly'</span>;
+<span class="kw">import</span> { <span class="fn">docToMarkdown</span> } <span class="kw">from</span> <span class="str">'extractly/markdown'</span>;
+
+<span class="kw">const</span> doc = <span class="kw">await</span> <span class="fn">Extractly</span>.<span class="fn">load</span>(<span class="str">'document.pdf'</span>);
+console.<span class="fn">log</span>(<span class="fn">docToMarkdown</span>(doc)); <span class="cmt">// headings, bold, tables, links</span></pre>
+  </div>
+  <div class="code-block">
+    <h3>Browser</h3>
+    <pre><span class="kw">import</span> { <span class="fn">Extractly</span> } <span class="kw">from</span> <span class="str">'extractly'</span>; <span class="cmt">// auto-resolves browser entry</span>
+
+<span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/document.pdf'</span>);
+<span class="kw">const</span> bytes = <span class="kw">new</span> <span class="fn">Uint8Array</span>(<span class="kw">await</span> res.<span class="fn">arrayBuffer</span>());
+<span class="kw">const</span> doc = <span class="fn">Extractly</span>.<span class="fn">fromBuffer</span>(bytes);
+console.<span class="fn">log</span>(doc.text);</pre>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <h2>Key Features</h2>
+  <div class="features-grid">
+    <div class="feature-card">
+      <h3>Zero Dependencies</h3>
+      <p>No PDF.js, no WASM, no native addons. Node.js build has zero runtime dependencies. Browser requires only fflate (~3 KB).</p>
+    </div>
+    <div class="feature-card">
+      <h3>Tiny Bundle</h3>
+      <p>~24 KB gzipped. Over 50x smaller than pdfjs-dist. Ideal for serverless and edge deployments.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Fast Extraction</h3>
+      <p>6x faster than alternatives on real-world documents. Pure TypeScript with no initialization overhead.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Markdown Output</h3>
+      <p>Opt-in structured markdown with inferred headings, bold/italic, tables, and link extraction.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Lazy Processing</h3>
+      <p>Text is extracted on first access. Skip pages you don't need for instant startup.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Full PDF Parsing</h3>
+      <p>XRef tables/streams, FlateDecode/LZW/ASCII85, ToUnicode CMaps, font encodings, form XObjects.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Encrypted PDFs</h3>
+      <p>Handles permission-encrypted PDFs (empty password) with RC4 and AES-128 decryption. Node.js only.</p>
+    </div>
+    <div class="feature-card">
+      <h3>TypeScript First</h3>
+      <p>Written in TypeScript with full type definitions. ESM only, tree-shakeable.</p>
+    </div>
+  </div>
+</section>
+
+<!-- API -->
+<section id="api">
+  <h2>API Reference</h2>
+
+  <div class="api-group">
+    <h3>Extractly</h3>
+    <div class="api-item">
+      <div class="api-sig">static Extractly.load(path: string, options?: LoadOptions): Promise&lt;Extractly&gt;</div>
+      <div class="api-desc">Load a PDF from a file path (Node.js only).</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">static Extractly.fromBuffer(data: Uint8Array, options?: LoadOptions): Extractly</div>
+      <div class="api-desc">Parse a PDF from a byte array. Works in both Node.js and browser.</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">get text: string</div>
+      <div class="api-desc">Full document text, all pages concatenated with double newlines.</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">get pages: readonly PDFPage[]</div>
+      <div class="api-desc">Array of page objects.</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">get pageCount: number</div>
+      <div class="api-desc">Number of pages in the document.</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">get metadata: DocumentMetadata</div>
+      <div class="api-desc">Document metadata (title, author, subject, creator, producer, dates).</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">dispose(): void</div>
+      <div class="api-desc">Release internal references for garbage collection. Also supports <code>[Symbol.dispose]()</code>.</div>
+    </div>
+  </div>
+
+  <div class="api-group">
+    <h3>PDFPage</h3>
+    <div class="api-item">
+      <div class="api-sig">get number: number</div>
+      <div class="api-desc">1-based page number.</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">get text: string</div>
+      <div class="api-desc">Extracted text for this page. Lazy -- computed on first access.</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">get textItems: TextItem[]</div>
+      <div class="api-desc">Raw text items with position, font, and size information.</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">get error: Error | null</div>
+      <div class="api-desc">Any error encountered during extraction for this page.</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">dispose(): void</div>
+      <div class="api-desc">Release page data for garbage collection.</div>
+    </div>
+  </div>
+
+  <div class="api-group">
+    <h3>extractly/markdown</h3>
+    <div class="api-item">
+      <div class="api-sig">docToMarkdown(doc: Extractly, separator?: string): string</div>
+      <div class="api-desc">Convert an entire document to structured markdown.</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">pageToMarkdown(page: PDFPage): string</div>
+      <div class="api-desc">Convert a single page to structured markdown.</div>
+    </div>
+  </div>
+
+  <div class="api-group">
+    <h3>LoadOptions</h3>
+    <div class="api-item">
+      <div class="api-sig">stripFormPlaceholders?: boolean</div>
+      <div class="api-desc">Remove form field placeholder text (default: true).</div>
+    </div>
+    <div class="api-item">
+      <div class="api-sig">includeInvisibleText?: boolean</div>
+      <div class="api-desc">Include invisible (render mode 3) text (default: false).</div>
+    </div>
+  </div>
+</section>
+
+<!-- PLAYGROUND -->
+<section id="playground">
+  <h2>Playground</h2>
+  <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">
+    Open a PDF to see extractly in action. Toggle between plain text and structured markdown output.
+    All processing happens locally in your browser -- no files are uploaded.
+  </p>
+  <div class="playground-wrap">
+    <div class="pg-header">
+      <div class="file-input-wrapper">
+        <span class="pg-file-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          Open PDF
+        </span>
+        <input type="file" id="pgFileInput" accept=".pdf,application/pdf" />
+      </div>
+      <span class="pg-file-name" id="pgFileName"></span>
+      <div class="pg-toggle">
+        <span class="pg-toggle-label active" id="pgLabelText">Text</span>
+        <label class="pg-toggle-switch">
+          <input type="checkbox" id="pgModeToggle" />
+          <span class="pg-toggle-track"></span>
+        </label>
+        <span class="pg-toggle-label" id="pgLabelMd">Markdown</span>
+      </div>
+    </div>
+    <div class="pg-body">
+      <aside class="pg-sidebar">
+        <h4>Document Info</h4>
+        <div class="pg-meta-key">Pages</div><div class="pg-meta-value empty" id="pgMetaPages">--</div>
+        <div class="pg-meta-key">Title</div><div class="pg-meta-value empty" id="pgMetaTitle">--</div>
+        <div class="pg-meta-key">Author</div><div class="pg-meta-value empty" id="pgMetaAuthor">--</div>
+        <div class="pg-meta-key">Subject</div><div class="pg-meta-value empty" id="pgMetaSubject">--</div>
+        <div class="pg-meta-key">Creator</div><div class="pg-meta-value empty" id="pgMetaCreator">--</div>
+        <div class="pg-meta-key">Producer</div><div class="pg-meta-value empty" id="pgMetaProducer">--</div>
+        <div class="pg-meta-key">Created</div><div class="pg-meta-value empty" id="pgMetaCreated">--</div>
+        <div class="pg-meta-key">Modified</div><div class="pg-meta-value empty" id="pgMetaModified">--</div>
+      </aside>
+      <div class="pg-content">
+        <div class="pg-empty-state" id="pgEmptyState">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <p>Select a PDF to extract text</p>
+        </div>
+        <div class="pg-loading" id="pgLoading"><div class="pg-spinner"></div>Extracting&hellip;</div>
+        <div class="pg-error" id="pgError"></div>
+        <nav class="pg-pager" id="pgPager">
+          <button class="pg-pager-btn" id="pgBtnAll">All</button>
+          <button class="pg-pager-btn" id="pgBtnPrev" disabled><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <span id="pgPageBtns"></span>
+          <button class="pg-pager-btn" id="pgBtnNext" disabled><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+          <span class="pg-pager-info" id="pgPagerInfo"></span>
+        </nav>
+        <pre class="pg-text-out" id="pgTextOut"></pre>
+        <div class="pg-md-out" id="pgMdOut"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  extractly &middot; MIT License &middot; <a href="https://github.com/barryking/extractly">GitHub</a>
+</footer>
+
+<script>
+(function() {
+  var cmd = document.getElementById('installCmd');
+  var btn = document.getElementById('installCopy');
+  var clipSvg = btn.firstElementChild;
+
+  function makeCheckSvg() {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('width', '16');
+    svg.setAttribute('height', '16');
+    var poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    poly.setAttribute('points', '20 6 9 17 4 12');
+    svg.appendChild(poly);
+    return svg;
+  }
+
+  cmd.addEventListener('click', function() {
+    navigator.clipboard.writeText('npm install extractly').then(function() {
+      var check = makeCheckSvg();
+      btn.replaceChild(check, btn.firstElementChild);
+      setTimeout(function() {
+        btn.replaceChild(clipSvg.cloneNode(true), btn.firstElementChild);
+      }, 1500);
+    });
+  });
+})();
+</script>
+<script type="module" src="./playground.ts"></script>
+</body>
+</html>

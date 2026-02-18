@@ -1,0 +1,139 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]
+   /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+
+4 0 obj
+<< /Length 983 >>
+stream
+BT
+/F1 12 Tf
+72 700 Td
+(CUSTOMER) Tj
+300 0 Td
+(VENDOR) Tj
+ET
+BT
+/F1 12 Tf
+72 670 Td
+(\\signature1\\) Tj
+ET
+BT
+/F1 12 Tf
+300 670 Td
+(\\signature2\\) Tj
+ET
+BT
+/F1 12 Tf
+72 650 Td
+(\\namehere1\\) Tj
+ET
+BT
+/F1 12 Tf
+72 650 Td
+(Peter Horst) Tj
+ET
+BT
+/F1 12 Tf
+300 650 Td
+(\\namehere2\\) Tj
+ET
+BT
+/F1 12 Tf
+300 650 Td
+(Jeff Miller) Tj
+ET
+BT
+/F1 12 Tf
+72 630 Td
+(\\titlehere1\\) Tj
+ET
+BT
+/F1 12 Tf
+72 630 Td
+(Chief Technology Officer) Tj
+ET
+BT
+/F1 12 Tf
+300 630 Td
+(\\titlehere2\\) Tj
+ET
+BT
+/F1 12 Tf
+300 630 Td
+(Senior Deal Desk Manager) Tj
+ET
+BT
+/F1 12 Tf
+72 610 Td
+(\\datehere1\\) Tj
+ET
+BT
+/F1 12 Tf
+72 610 Td
+(November 24, 2023) Tj
+ET
+BT
+/F1 12 Tf
+300 610 Td
+(\\datehere2\\) Tj
+ET
+BT
+/F1 12 Tf
+300 610 Td
+(November 22, 2023) Tj
+ET
+BT
+/F1 12 Tf
+72 580 Td
+(\\POhere1\\) Tj
+ET
+BT
+/F1 12 Tf
+72 560 Td
+(\\IIO_Finance_Contact_Name_1\\) Tj
+ET
+BT
+/F1 12 Tf
+72 560 Td
+(Jane Doe) Tj
+ET
+BT
+/F1 12 Tf
+300 560 Td
+(\\IIO_Finance_Contact_Email_2) Tj
+ET
+BT
+/F1 12 Tf
+300 560 Td
+(jane@example.com) Tj
+ET
+endstream
+endobj
+
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000059 00000 n 
+0000000117 00000 n 
+0000000247 00000 n 
+0000001282 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1380
+%%EOF

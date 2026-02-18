@@ -1,0 +1,87 @@
+{
+  "name": "extractly",
+  "version": "0.1.0",
+  "description": "Zero-dependency TypeScript PDF text extraction for RAG and AI pipelines",
+  "type": "module",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": {
+        "import": "./dist/index.js"
+      },
+      "default": "./dist/browser.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    },
+    "./markdown": {
+      "types": "./dist/markdown-entry.d.ts",
+      "import": "./dist/markdown-entry.js"
+    }
+  },
+  "peerDependencies": {
+    "fflate": "^0.8.0"
+  },
+  "peerDependenciesMeta": {
+    "fflate": {
+      "optional": true
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "build:site": "vite build --config vite.config.site.ts",
+    "prepublishOnly": "npm test && npm run build"
+  },
+  "keywords": [
+    "pdf",
+    "text-extraction",
+    "rag",
+    "ai",
+    "typescript",
+    "zero-dependency",
+    "parser",
+    "llm",
+    "browser"
+  ],
+  "author": "Barry King (https://github.com/barryking)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/barryking/extractly.git"
+  },
+  "homepage": "https://barryking.github.io/extractly/",
+  "bugs": {
+    "url": "https://github.com/barryking/extractly/issues"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "dompurify": "^3.3.1",
+    "fflate": "^0.8.2",
+    "marked": "^17.0.3",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.4.296",
+    "tsup": "^8.4.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.0",
+    "unpdf": "^1.4.0",
+    "vite": "^7.3.1",
+    "vitest": "^3.0.0"
+  }
+}
