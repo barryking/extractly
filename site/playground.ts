@@ -1,4 +1,4 @@
-import { DocuText } from 'docutext/browser';
+import { DocuText, PdfUnsupportedError } from 'docutext/browser';
 import { docToMarkdown, pageToMarkdown } from 'docutext/markdown';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -13,6 +13,7 @@ const labelMd = $('pgLabelMd');
 const emptyState = $('pgEmptyState');
 const loadingEl = $('pgLoading');
 const errorEl = $('pgError');
+const warningEl = $('pgWarning');
 const textOut = $<HTMLPreElement>('pgTextOut');
 const mdOut = $('pgMdOut');
 const pager = $('pgPager');
@@ -70,6 +71,15 @@ function showError(msg: string) {
 
 function clearError() {
   errorEl.style.display = 'none';
+}
+
+function showWarning(msg: string) {
+  warningEl.textContent = msg;
+  warningEl.style.display = 'block';
+}
+
+function clearWarning() {
+  warningEl.style.display = 'none';
 }
 
 function getActiveText(): string {
@@ -223,6 +233,7 @@ fileInput.addEventListener('change', async (e) => {
   if (!file) return;
 
   clearError();
+  clearWarning();
   fileNameEl.textContent = file.name;
   emptyState.style.display = 'none';
   textOut.style.display = 'none';
@@ -255,11 +266,19 @@ fileInput.addEventListener('change', async (e) => {
     updatePager();
     render();
 
+    if (fullText.trim().length === 0 && doc.pageCount > 0) {
+      showWarning('No text was extracted. This PDF may contain only images or scanned content.');
+    }
+
     doc.dispose();
   } catch (err) {
     loadingEl.style.display = 'none';
     copyBtn.disabled = true;
-    showError(`Failed to parse PDF: ${(err as Error).message}`);
+    if (err instanceof PdfUnsupportedError && (err as Error).message.includes('Encrypted')) {
+      showError('This PDF is encrypted. Encrypted PDF decryption is currently supported in Node.js only \u2014 the browser playground cannot process encrypted files.');
+    } else {
+      showError(`Failed to parse PDF: ${(err as Error).message}`);
+    }
     console.error(err);
   }
 });
