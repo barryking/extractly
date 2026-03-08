@@ -1,6 +1,6 @@
 {
   "name": "docutext",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Zero-dependency TypeScript PDF text extraction for RAG and AI pipelines",
   "type": "module",
   "module": "./dist/index.js",
@@ -39,11 +39,13 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "dev:site": "vite --config vite.config.site.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "build:site": "vite build --config vite.config.site.ts",
+    "preview:site": "vite preview --config vite.config.site.ts",
     "prepublishOnly": "npm test && npm run build"
   },
   "keywords": [

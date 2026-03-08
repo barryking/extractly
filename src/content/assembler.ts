@@ -13,6 +13,22 @@ import type { TextItem, TextSpan } from '../types.js';
 import type { LinkAnnotation } from './links.js';
 import { detectFontStyle } from './font-style.js';
 
+type TextMode = 'clean' | 'layout';
+
+interface SpacingContext {
+  prev: TextItem;
+  curr: TextItem;
+  xGap: number;
+  posGap: number;
+  fontSize: number;
+}
+
+interface BoundaryInfo {
+  prevBoundary: string;
+  currBoundary: string;
+  alnumBoundary: boolean;
+}
+
 /**
  * Detect whether a gap between two consecutive same-line items represents a
  * word boundary (space).
@@ -26,19 +42,36 @@ import { detectFontStyle } from './font-style.js';
  * average proportional-font character width to avoid spurious spaces.
  */
 export function shouldInsertSpace(
-  xGap: number,
-  posGap: number,
-  textLen: number,
-  fontSize: number,
-  hasMetricWidth: boolean,
+  { prev, curr, xGap, posGap, fontSize }: SpacingContext,
+  textMode: TextMode = 'clean',
 ): boolean {
+  const prevText = prev.text;
+  const currText = curr.text;
+
+  if (/\s$/.test(prevText) || /^\s/.test(currText)) {
+    return false;
+  }
+
+  const { alnumBoundary } = getBoundaryInfo(prevText, currText);
+
+  const prevChars = Math.max(prevText.replace(/\s/g, '').length, 1);
+  const currChars = Math.max(currText.replace(/\s/g, '').length, 1);
+  const prevAvgCharWidth = prev.width > 0 ? prev.width / prevChars : 0;
+  const currAvgCharWidth = curr.width > 0 ? curr.width / currChars : 0;
+  const avgGlyph = prevAvgCharWidth > 0 && currAvgCharWidth > 0
+    ? Math.min(prevAvgCharWidth, currAvgCharWidth)
+    : 0;
+  const hasMetricWidth = prev.width > 0 && curr.width > 0;
+
   if (hasMetricWidth) {
+    if (textMode === 'clean' && alnumBoundary) {
+      return xGap > Math.max(fontSize * 0.35, avgGlyph * 0.6);
+    }
     return xGap > fontSize * 0.15;
   }
 
-  // No reliable width data -- use position-based estimate with average
-  // proportional character width (~0.5em).
-  const estimatedRunWidth = Math.max(textLen, 1) * fontSize * 0.5;
+  const multiplier = textMode === 'clean' && alnumBoundary ? 0.7 : 0.5;
+  const estimatedRunWidth = Math.max(prevChars, 1) * fontSize * multiplier;
   return posGap > estimatedRunWidth;
 }
 
@@ -88,12 +121,23 @@ export function sortTextItems(items: TextItem[]): TextItem[] {
   // then by stream order within each text object
   for (const line of lines) {
     const objMinX = new Map<number, number>();
+    const objMaxX = new Map<number, number>();
+    const objStartIndex = new Map<number, number>();
     for (const entry of line) {
       const objId = entry.item._textObjectId;
       if (objId === undefined) continue;
       const existing = objMinX.get(objId);
       if (existing === undefined || entry.item.x < existing) {
         objMinX.set(objId, entry.item.x);
+      }
+      const rightEdge = itemRightEdge(entry);
+      const existingMax = objMaxX.get(objId);
+      if (existingMax === undefined || rightEdge > existingMax) {
+        objMaxX.set(objId, rightEdge);
+      }
+      const existingIndex = objStartIndex.get(objId);
+      if (existingIndex === undefined || entry.i < existingIndex) {
+        objStartIndex.set(objId, entry.i);
       }
     }
 
@@ -104,6 +148,12 @@ export function sortTextItems(items: TextItem[]): TextItem[] {
       if (objA !== undefined && objB !== undefined && objA !== objB) {
         const minXA = objMinX.get(objA) ?? 0;
         const minXB = objMinX.get(objB) ?? 0;
+        const maxXA = objMaxX.get(objA) ?? minXA;
+        const maxXB = objMaxX.get(objB) ?? minXB;
+        const overlap = Math.min(maxXA, maxXB) - Math.max(minXA, minXB);
+        if (overlap > 1) {
+          return (objStartIndex.get(objA) ?? a.i) - (objStartIndex.get(objB) ?? b.i);
+        }
         if (Math.abs(minXA - minXB) > 0.1) return minXA - minXB;
       }
 
@@ -385,6 +435,7 @@ export function normalizePUA(text: string): string {
 
 export interface AssemblyOptions {
   stripFormPlaceholders?: boolean;
+  textMode?: TextMode;
 }
 
 export interface StructuredLine {
@@ -422,48 +473,100 @@ interface ItemVisitor {
   onEnd(): void;
 }
 
+function isLayoutArtifact(item: TextItem): boolean {
+  return item.text.trim() === '' && item.width <= 1 && item.fontSize <= 1.5;
+}
+
+function getBoundaryInfo(prevText: string, currText: string): BoundaryInfo {
+  const prevTrimmed = prevText.trimEnd();
+  const currTrimmed = currText.trimStart();
+  const prevBoundary = prevTrimmed[prevTrimmed.length - 1] ?? '';
+  const currBoundary = currTrimmed[0] ?? '';
+  return {
+    prevBoundary,
+    currBoundary,
+    alnumBoundary: /[\p{L}\p{N}]/u.test(prevBoundary) && /[\p{L}\p{N}]/u.test(currBoundary),
+  };
+}
+
+function shouldJoinBackwardOverlap(prev: TextItem, curr: TextItem, textMode: TextMode): boolean {
+  if (textMode !== 'clean') return false;
+
+  const { prevBoundary, currBoundary, alnumBoundary } = getBoundaryInfo(prev.text, curr.text);
+  if (alnumBoundary) return true;
+
+  const prevIsWord = /[\p{L}\p{N}]/u.test(prevBoundary);
+  const currIsWord = /[\p{L}\p{N}]/u.test(currBoundary);
+  if (prevIsWord && /[-–—]/.test(currBoundary)) return true;
+  if (/[-–—'’]/.test(prevBoundary) && currIsWord) return true;
+
+  return false;
+}
+
 /**
  * Core iteration over sorted text items. Detects line breaks, paragraph breaks,
  * and word spacing, delegating output to a visitor. Both assembleText and
  * assembleStructuredItems share this loop.
  */
-function walkItems(items: TextItem[], links: LinkAnnotation[], visitor: ItemVisitor): void {
+function walkItems(
+  items: TextItem[],
+  links: LinkAnnotation[],
+  visitor: ItemVisitor,
+  options?: AssemblyOptions,
+): void {
   const sorted = sortTextItems(items);
+  const textMode = options?.textMode ?? 'clean';
 
   let lastX = 0;
-  let lastY = sorted[0].y;
-  let lastFontSize = sorted[0].fontSize || 12;
+  let lastY = 0;
+  let lastFontSize = 12;
   let lastWidth = 0;
-  let lastHasMetricWidth = false;
-  let lastTextLen = 0;
+  let lastItem: TextItem | null = null;
   let hasContent = false;
 
   for (const item of sorted) {
     if (!item.text) continue;
+    if (isLayoutArtifact(item)) continue;
+
+    const itemLink = findLinkForItem(item, links);
+
+    if (!hasContent) {
+      visitor.onItem(item, itemLink);
+      hasContent = true;
+      lastX = item.x;
+      lastY = item.y;
+      lastFontSize = item.fontSize || lastFontSize;
+      lastWidth = item.width || (item.text.length * lastFontSize * 0.6);
+      lastItem = item;
+      continue;
+    }
 
     const yDelta = Math.abs(item.y - lastY);
     const lineThreshold = lastFontSize * 0.5;
-    const itemLink = findLinkForItem(item, links);
 
-    if (yDelta > lineThreshold && hasContent) {
+    if (yDelta > lineThreshold) {
       visitor.onLineBreak(item, yDelta > lastFontSize * 1.8);
-    } else if (hasContent) {
+    } else if (lastItem) {
       const xGap = item.x - (lastX + lastWidth);
       const posGap = item.x - lastX;
-      if (xGap < -lastFontSize * 2 || shouldInsertSpace(xGap, posGap, lastTextLen, lastFontSize, lastHasMetricWidth)) {
+      const backwardOverlap = xGap < -lastFontSize * 2;
+      if (
+        (backwardOverlap && !shouldJoinBackwardOverlap(lastItem, item, textMode)) ||
+        (!backwardOverlap &&
+        shouldInsertSpace({ prev: lastItem, curr: item, xGap, posGap, fontSize: lastFontSize }, textMode)
+        )
+      ) {
         visitor.onSpace();
       }
     }
 
     visitor.onItem(item, itemLink);
 
-    hasContent = true;
     lastX = item.x;
     lastY = item.y;
     lastFontSize = item.fontSize || lastFontSize;
-    lastHasMetricWidth = (item.width ?? 0) > 0;
     lastWidth = item.width || (item.text.length * lastFontSize * 0.6);
-    lastTextLen = item.text.length;
+    lastItem = item;
   }
 
   visitor.onEnd();
@@ -491,7 +594,7 @@ export function assembleText(items: TextItem[], options?: AssemblyOptions): stri
     onEnd() {
       if (currentLine) lines.push(currentLine);
     },
-  });
+  }, options);
 
   return cleanText(lines.join('\n'), options?.stripFormPlaceholders ?? true);
 }
@@ -551,7 +654,7 @@ export function assembleStructuredItems(items: TextItem[], links: LinkAnnotation
     onEnd() {
       pushLine(false);
     },
-  });
+  }, options);
 
   if (options?.stripFormPlaceholders ?? true) {
     return result.map(line => {

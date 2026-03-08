@@ -66,6 +66,7 @@ export class DocuText {
     const pageSeparator = options?.pageSeparator ?? '\n\n';
     const stripFormPlaceholders = options?.stripFormPlaceholders ?? true;
     const includeInvisibleText = options?.includeInvisibleText ?? false;
+    const textMode = options?.textMode ?? 'clean';
 
     // Extract metadata
     const metadata = extractMetadata(parser);
@@ -73,7 +74,7 @@ export class DocuText {
     // Build page objects
     const pageDicts = parser.getPages();
     const pages = pageDicts.map(
-      (dict, index) => new PDFPage(dict, parser, index + 1, { stripFormPlaceholders, includeInvisibleText }),
+      (dict, index) => new PDFPage(dict, parser, index + 1, { stripFormPlaceholders, includeInvisibleText, textMode }),
     );
 
     return new DocuText(pages, { ...metadata, pageCount: pages.length }, pageSeparator);

@@ -348,7 +348,7 @@
     </div>
     <div class="hero-stat">
       <div class="number">~24 KB</div>
-      <div class="label">Gzipped bundle</div>
+      <div class="label">Browser bundle</div>
     </div>
     <div class="hero-stat">
       <div class="number">0</div>
@@ -416,6 +416,14 @@ console.<span class="fn">log</span>(<span class="fn">docToMarkdown</span>(doc));
 <span class="kw">const</span> doc = <span class="fn">DocuText</span>.<span class="fn">fromBuffer</span>(bytes);
 console.<span class="fn">log</span>(doc.text);</pre>
   </div>
+  <div class="code-block">
+    <h3>Layout fidelity</h3>
+    <pre><span class="kw">const</span> doc = <span class="kw">await</span> <span class="fn">DocuText</span>.<span class="fn">load</span>(<span class="str">'document.pdf'</span>, {
+  textMode: <span class="str">'layout'</span>
+});
+
+console.<span class="fn">log</span>(doc.text);</pre>
+  </div>
 </section>
 
 <!-- FEATURES -->
@@ -428,11 +436,15 @@ console.<span class="fn">log</span>(doc.text);</pre>
     </div>
     <div class="feature-card">
       <h3>Tiny Bundle</h3>
-      <p>~24 KB gzipped. Over 50x smaller than pdfjs-dist. Ideal for serverless and edge deployments.</p>
+      <p>~24 KB gzipped for the browser bundle. Over 50x smaller than pdfjs-dist. Ideal for serverless and edge deployments.</p>
     </div>
     <div class="feature-card">
       <h3>Fast Extraction</h3>
       <p>6x faster than alternatives on real-world documents. Pure TypeScript with no initialization overhead.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Clean Text Defaults</h3>
+      <p>Default extraction favors semantic text reconstruction, fixing fragmented form PDFs and stripping layout-only whitespace artifacts.</p>
     </div>
     <div class="feature-card">
       <h3>Markdown Output</h3>
@@ -452,7 +464,7 @@ console.<span class="fn">log</span>(doc.text);</pre>
     </div>
     <div class="feature-card">
       <h3>TypeScript First</h3>
-      <p>Written in TypeScript with full type definitions. ESM only, tree-shakeable.</p>
+      <p>Written in TypeScript with full type definitions. ESM only, tree-shakeable, with an opt-in layout-fidelity mode.</p>
     </div>
   </div>
 </section>

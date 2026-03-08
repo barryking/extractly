@@ -23,6 +23,7 @@ export interface PageInternals {
 export interface PageOptions {
   stripFormPlaceholders?: boolean;
   includeInvisibleText?: boolean;
+  textMode?: 'clean' | 'layout';
 }
 
 export class PDFPage {
@@ -45,6 +46,7 @@ export class PDFPage {
     this.number = pageNumber;
     this._assemblyOptions = {
       stripFormPlaceholders: options?.stripFormPlaceholders ?? true,
+      textMode: options?.textMode ?? 'clean',
     };
     this._includeInvisibleText = options?.includeInvisibleText ?? false;
   }

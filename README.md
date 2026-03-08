@@ -70,12 +70,25 @@ for (const page of doc) {
 }
 ```
 
+### Layout-Fidelity Opt-In
+
+```typescript
+import { DocuText } from 'docutext';
+
+const doc = await DocuText.load('document.pdf', { textMode: 'layout' });
+console.log(doc.text);
+```
+
+`textMode: 'layout'` keeps more literal spacing and text-object behavior. The default `textMode: 'clean'` favors semantic text reconstruction and fixes fragmented form PDFs.
+
 ## Key Features
 
 - **Zero dependencies** in Node.js. Single optional peer dep (fflate) for browser.
-- **~24 KB gzipped** -- 50x smaller than pdfjs-dist.
+- **~24 KB gzipped browser bundle** -- 50x smaller than pdfjs-dist.
 - **6x faster** than alternatives on real-world documents.
+- **Clean semantic text by default** -- fragmented form PDFs are reconstructed without spurious intra-word splits.
 - **Plain text + structured markdown** output (headings inferred from font size, bold/italic, links).
+- **Opt-in layout fidelity mode** via `textMode: 'layout'` when you want more literal spacing/object ordering.
 - **Column-aware text flow** -- side-by-side columns (e.g. signature blocks) are read column-first to keep related data together.
 - **Lazy extraction** -- accessing `page.text` only processes that page.
 - **Full PDF parsing** -- xref tables, stream filters, font encodings, ToUnicode CMaps, form XObjects.
@@ -87,6 +100,10 @@ for (const page of doc) {
 ## Documentation
 
 For the full API reference, architecture details, and a live playground, see the **[documentation site](https://barryking.github.io/docutext/)**.
+
+## Security
+
+Please see [SECURITY.md](./SECURITY.md) for vulnerability reporting guidance.
 
 ## License
 

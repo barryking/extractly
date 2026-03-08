@@ -46,6 +46,8 @@ export interface LoadOptions {
   readonly stripFormPlaceholders?: boolean;
   /** Include invisible text (rendering mode 3). Useful for OCR-only PDFs. Default: false */
   readonly includeInvisibleText?: boolean;
+  /** Text reconstruction mode. Default: 'clean' for semantic text, 'layout' for more literal spacing/object behavior. */
+  readonly textMode?: 'clean' | 'layout';
 }
 
 /** Serializable page representation */

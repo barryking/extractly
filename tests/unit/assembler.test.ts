@@ -69,14 +69,44 @@ describe('assembler', () => {
   });
 
   describe('shouldInsertSpace', () => {
-    it('returns true for large xGap with metric width (xGap=5, fontSize=12, hasMetricWidth=true)', () => {
-      // 5 > 12*0.15 = 1.8 → true
-      expect(shouldInsertSpace(5, 0, 1, 12, true)).toBe(true);
+    it('returns true for large xGap with metric width in layout mode', () => {
+      expect(shouldInsertSpace({
+        prev: makeItem({ text: 'Hello', x: 0, y: 100, fontSize: 12, width: 30 }),
+        curr: makeItem({ text: 'World', x: 40, y: 100, fontSize: 12, width: 25 }),
+        xGap: 10,
+        posGap: 40,
+        fontSize: 12,
+      }, 'layout')).toBe(true);
     });
 
-    it('uses position-based fallback without metric width (xGap=0, posGap=20, textLen=1, fontSize=12)', () => {
-      // posGap 20 > estimatedRunWidth = 1*12*0.5 = 6 → true
-      expect(shouldInsertSpace(0, 20, 1, 12, false)).toBe(true);
+    it('uses position-based fallback without metric width', () => {
+      expect(shouldInsertSpace({
+        prev: makeItem({ text: 'A', x: 0, y: 100, fontSize: 12, width: 0 }),
+        curr: makeItem({ text: 'B', x: 20, y: 100, fontSize: 12, width: 0 }),
+        xGap: 0,
+        posGap: 20,
+        fontSize: 12,
+      }, 'layout')).toBe(true);
+    });
+
+    it('does not synthesize a space when a boundary already contains whitespace', () => {
+      expect(shouldInsertSpace({
+        prev: makeItem({ text: 'Hello ', x: 0, y: 100, fontSize: 12, width: 36 }),
+        curr: makeItem({ text: 'World', x: 40, y: 100, fontSize: 12, width: 25 }),
+        xGap: 4,
+        posGap: 40,
+        fontSize: 12,
+      })).toBe(false);
+    });
+
+    it('is stricter for alnum-to-alnum joins in clean mode', () => {
+      expect(shouldInsertSpace({
+        prev: makeItem({ text: 'lis', x: 0, y: 100, fontSize: 9, width: 16.2 }),
+        curr: makeItem({ text: 'ted', x: 17.1, y: 100, fontSize: 9, width: 16.2 }),
+        xGap: 0.9,
+        posGap: 17.1,
+        fontSize: 9,
+      }, 'clean')).toBe(false);
     });
   });
 
@@ -412,6 +442,48 @@ describe('assembler', () => {
       const vantaIdx = lines.findIndex(l => l.includes('Vanta'));
       const accelIdx = lines.findIndex(l => l.includes('Accelerant'));
       expect(vantaIdx).toBeLessThan(accelIdx);
+    });
+  });
+
+  describe('fragmented text cleanup', () => {
+    it('ignores tiny whitespace artifacts between same-line fragments', () => {
+      const items: TextItem[] = [
+        makeItem({ text: 'O', x: 54, y: 653.26, fontSize: 15.96, width: 9.576 }),
+        makeItem({ text: ' ', x: 54, y: 646.18, fontSize: 0.96, width: 0.576 }),
+        makeItem({ text: 'rder Form', x: 63.51216, y: 653.26, fontSize: 15.96, width: 86.184 }),
+      ];
+
+      expect(assembleText(items)).toBe('Order Form');
+      expect(assembleStructuredItems(items)[0].text).toBe('Order Form');
+    });
+
+    it('keeps alnum fragments joined in clean mode when the gap is small', () => {
+      const items: TextItem[] = [
+        makeItem({ text: 'lis', x: 0, y: 100, fontSize: 9, width: 16.2 }),
+        makeItem({ text: 'ted', x: 17.1, y: 100, fontSize: 9, width: 16.2 }),
+      ];
+
+      expect(assembleText(items)).toBe('listed');
+    });
+
+    it('still inserts real word gaps in clean mode', () => {
+      const items: TextItem[] = [
+        makeItem({ text: 'Order', x: 0, y: 100, fontSize: 12, width: 30 }),
+        makeItem({ text: 'Term', x: 40, y: 100, fontSize: 12, width: 24 }),
+      ];
+
+      expect(assembleText(items)).toBe('Order Term');
+    });
+
+    it('keeps layout mode more literal while still avoiding artifact-driven line breaks', () => {
+      const items: TextItem[] = [
+        makeItem({ text: 'Billing De', x: 0, y: 100, fontSize: 14, width: 84 }),
+        makeItem({ text: ' ', x: 0, y: 94, fontSize: 0.96, width: 0.576 }),
+        makeItem({ text: 'tails', x: 86.2, y: 100, fontSize: 14, width: 35 }),
+      ];
+
+      expect(assembleText(items, { textMode: 'clean' })).toBe('Billing Details');
+      expect(assembleText(items, { textMode: 'layout' })).toBe('Billing De tails');
     });
   });
 });
