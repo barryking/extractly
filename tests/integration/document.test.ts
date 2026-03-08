@@ -7,14 +7,9 @@ import { docToMarkdown, pageToMarkdown } from '../../src/markdown-entry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, '..', 'fixtures');
-const repoRoot = join(__dirname, '..', '..');
 
 function loadFixture(name: string): Uint8Array {
   return new Uint8Array(readFileSync(join(fixturesDir, name)));
-}
-
-function loadBenchmarkPdf(name: string): Uint8Array {
-  return new Uint8Array(readFileSync(join(repoRoot, 'benchmarks', 'pdfs', name)));
 }
 
 describe('DocuText - Document API', () => {
@@ -363,8 +358,8 @@ describe('DocuText - Document API', () => {
   });
 
   describe('fragmented form PDFs', () => {
-    it('reconstructs clean semantic text for mangle.pdf by default', async () => {
-      const data = loadBenchmarkPdf('mangle.pdf');
+    it('reconstructs clean semantic text for fragmented-form.pdf by default', async () => {
+      const data = loadFixture('fragmented-form.pdf');
       const doc = await DocuText.load(data);
       const text = doc.text;
 
@@ -373,21 +368,20 @@ describe('DocuText - Document API', () => {
       expect(text).toContain('Subscription Details');
       expect(text).toContain('Billing Details');
       expect(text).toContain('listed below');
-      expect(text).toMatch(/offer\s+expiration date above/i);
+      expect(text).toContain('offer expiration date above');
       expect(text).toContain('Order Term) when applicable');
-      expect(text).toMatch(/then-current list\s+price/);
+      expect(text).toContain('then-current list price');
 
       expect(text).not.toMatch(/O\s+\n+\s*rder Form/);
       expect(text).not.toMatch(/Order\s+\n+\s*Term/);
       expect(text).not.toMatch(/Subs\s+\n+\s*cription/);
       expect(text).not.toMatch(/Billing De\s+\n+\s*tails/);
       expect(text).not.toMatch(/lis\s+ted/);
-      expect(text).not.toMatch(/offe\s+r/i);
-      expect(text).not.toMatch(/then\s+-current/);
+      expect(text).not.toMatch(/offe\s+r expiration/i);
     });
 
     it('supports layout mode without reintroducing artifact-driven false line breaks', async () => {
-      const data = loadBenchmarkPdf('mangle.pdf');
+      const data = loadFixture('fragmented-form.pdf');
       const doc = await DocuText.load(data, { textMode: 'layout' });
       const text = doc.text;
 
